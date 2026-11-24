@@ -33,8 +33,11 @@
   // difficulty re-rated for a casual teen / young-adult audience (data/difficulty.js)
   const DIFF_OVERRIDE = window.KRILLION.difficulty || {};
   QS.forEach(q => { if (DIFF_OVERRIDE[q.id]) q.diff = DIFF_OVERRIDE[q.id]; });
-  // Daily & Unlimited: 5 easy + 2 medium, never hard. Themed packs: 3 easy, 3 medium, 1 hard.
-  const MIX = ['easy', 'easy', 'easy', 'easy', 'easy', 'medium', 'medium'];
+  // plain-language rewrites of confusing prompts (data/wording.js)
+  const WORDING = window.KRILLION.wording || {};
+  QS.forEach(q => { if (WORDING[q.id]) q.q = WORDING[q.id]; });
+  // Daily & Unlimited: easy only. Themed packs: 3 easy, 3 medium, 1 hard.
+  const MIX = ['easy', 'easy', 'easy', 'easy', 'easy', 'easy', 'easy']; // Daily & Unlimited: only questions ~90% of players can answer
   const PACK_MIX = ['easy', 'easy', 'easy', 'medium', 'medium', 'medium', 'hard'];
   const FALLBACK = { easy: ['easy', 'medium', 'hard'], medium: ['medium', 'easy', 'hard'], hard: ['hard', 'medium', 'easy'] };
   const BY_ID = new Map(QS.map(q => [q.id, q]));
@@ -106,10 +109,9 @@
     if (pack) {
       for (const want of mix) { for (const w of FALLBACK[want]) { const q = sh.find(x => x.diff === w && !picks.includes(x)); if (q) { picks.push(q); break; } } }
     } else {
-      // keep at most two medium questions in an Unlimited dive
-      const med = () => picks.filter(q => q.diff === 'medium').length;
-      for (let i = picks.length - 1; i >= 0; i--) if (picks[i].diff === 'medium' && med() > 2) picks.splice(i, 1);
-      for (const q of sh) { if (picks.length >= PER_GAME) break; if (!picks.includes(q) && (q.diff === 'easy' || med() < 2)) picks.push(q); }
+      // Unlimited: easy questions only
+      for (let i = picks.length - 1; i >= 0; i--) if (picks[i].diff !== 'easy') picks.splice(i, 1);
+      for (const q of sh) { if (picks.length >= PER_GAME) break; if (!picks.includes(q) && q.diff === 'easy') picks.push(q); }
     }
     for (const q of sh0) { if (picks.length >= PER_GAME) break; if (!picks.includes(q)) picks.push(q); }
     return picks.sort((a, b) => DIFF_RANK[a.diff] - DIFF_RANK[b.diff]).map(q => q.id);

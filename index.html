@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<title>Krillion — The Daily Dive</title>
+<meta name="description" content="A daily ocean trivia dive. Seven prompts, 25 seconds each. Rarer answers sink deeper.">
+<meta name="theme-color" content="#0b1d36">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' shape-rendering='crispEdges'%3E%3Crect width='16' height='16' fill='%230b1d36'/%3E%3Cpath fill='%23e8463c' d='M3 6h8v1h2v2h1v2H4v-1H2V8h1z'/%3E%3Cpath fill='%23ff8f73' d='M5 6h5v1H5z'/%3E%3Crect x='12' y='8' width='1' height='1' fill='%23111'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Pixelify+Sans:wght@400;500;600;700&family=VT323&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css?v=20">
+</head>
+<body>
+<canvas id="ocean" aria-hidden="true"></canvas>
+
+<!-- Pixel icon sprite -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-menu" viewBox="0 0 16 16"><path d="M1 3h14v2H1zM1 7h14v2H1zM1 11h14v2H1z"/></symbol>
+    <symbol id="i-sound" viewBox="0 0 16 16"><path d="M1 6h3v4H1zM4 5h1v6H4zM5 4h1v8H5zM6 3h2v10H6zM10 6h1v4h-1zM12 4h1v8h-1zM14 2h1v12h-1z"/></symbol>
+    <symbol id="i-mute" viewBox="0 0 16 16"><path d="M1 6h3v4H1zM4 5h1v6H4zM5 4h1v8H5zM6 3h2v10H6zM10 5h1v1h-1zM11 6h1v1h-1zM12 7h1v2h-1zM13 6h1v1h-1zM14 5h1v1h-1zM11 9h1v1h-1zM10 10h1v1h-1zM13 9h1v1h-1zM14 10h1v1h-1z"/></symbol>
+    <symbol id="i-cal" viewBox="0 0 16 16"><path d="M4 1h2v2H4zM10 1h2v2h-2zM1 3h14v12H1zm2 4v6h10V7z"/><path d="M4 8h2v2H4zM7 8h2v2H7zM10 8h2v2h-2zM4 11h2v1H4zM7 11h2v1H7z"/></symbol>
+    <symbol id="i-cube" viewBox="0 0 16 16"><path d="M7 1h2v1h2v1h2v1h1v8h-1v1h-2v1H9v1H7v-1H5v-1H3v-1H2V4h1V3h2V2h2zm0 2v1H5v1H4v1h1v1h2v1h2V7h2V6h1V5h-1V4H9V3zM4 8v4h1v1h2V10H6V9H4zm5 2v3h2v-1h1V8h-2v1H9z"/></symbol>
+    <symbol id="i-inf" viewBox="0 0 18 16"><path d="M2 5h4v1h1v1h1v1h2V7h1V6h1V5h4v1h1v4h-1v1h-4v-1h-1V9h-1V8H8v1H7v1H6v1H2v-1H1V6h1zm1 2v2h3V7zm9 0v2h3V7z"/></symbol>
+    <symbol id="i-chart" viewBox="0 0 16 16"><path d="M2 9h3v5H2zM7 4h3v10H7zM12 7h3v7h-3z"/></symbol>
+    <symbol id="i-play" viewBox="0 0 16 16"><path d="M4 2h2v1h2v1h2v1h2v1h2v4h-2v1h-2v1H8v1H6v1H4z"/></symbol>
+    <symbol id="i-close" viewBox="0 0 16 16"><path d="M2 2h2v2H2zM4 4h2v2H4zM6 6h4v4H6zM10 4h2v2h-2zM12 2h2v2h-2zM4 10h2v2H4zM2 12h2v2H2zM10 10h2v2h-2zM12 12h2v2h-2z"/></symbol>
+    <symbol id="i-share" viewBox="0 0 16 16"><path d="M7 1h2v1h1v1h1v1h1v2H9v5H7V6H4V4h1V3h1V2h1zM2 9h2v4h8V9h2v6H2z"/></symbol>
+    <symbol id="i-gear" viewBox="0 0 16 16"><path d="M7 1h2v2h2V2h1v1h1v1h-1v2h2v2h-2v2h1v1h-1v1h-1v-1H9v2H7v-2H5v1H4v-1H3v-1h1V8H2V6h2V4H3V3h1V2h1v1h2zm0 4v1H6v3h1v1h2V9h1V6H9V5z"/></symbol>
+    <symbol id="i-help" viewBox="0 0 16 16"><path d="M5 2h6v1h1v4h-1v1H9v2H7V7h1V6h2V4H6v2H4V3h1zM7 12h2v2H7z"/></symbol>
+    <symbol id="i-restart" viewBox="0 0 16 16"><path d="M6 1h5v1h2v1h1v2h1v6h-1v2h-1v1h-2v1H6v-1H4v-1H3v-2H2V9h2v2h1v1h1v1h5v-1h1v-1h1V5h-1V4h-1V3H6v1H5v1h2v2H1V1h2v2h1V2h2z"/></symbol>
+    <symbol id="i-home" viewBox="0 0 16 16"><path d="M7 1h2v1h1v1h1v1h1v1h1v1h1v2h-1v7H9v-4H7v4H3V8H2V6h1V5h1V4h1V3h1V2h1z"/></symbol>
+  </defs>
+</svg>
+
+<div id="app">
+  <!-- Corner controls (title / menus) -->
+  <div class="rail rail-l">
+    <button class="icon-btn rail-btn" id="btn-menu" aria-label="Open menu" title="Menu (M)"><svg><use href="#i-menu"/></svg></button>
+    <button class="icon-btn rail-btn game-only" id="btn-quit" aria-label="Quit to home" title="Quit to home"><svg><use href="#i-home"/></svg></button>
+    <button class="icon-btn rail-btn game-only" id="btn-restart" aria-label="Restart dive" title="Restart with new prompts"><svg><use href="#i-restart"/></svg></button>
+  </div>
+  <div class="rail">
+    <button class="icon-btn rail-btn" id="btn-sound" aria-label="Toggle sound" title="Sound (S)"><svg><use href="#i-sound"/></svg></button>
+    <button class="icon-btn rail-btn" id="btn-settings" aria-label="Settings" title="Settings"><svg><use href="#i-gear"/></svg></button>
+  </div>
+
+  <!-- ============ TITLE ============ -->
+  <section class="screen" id="screen-title" aria-label="Title">
+    <div class="title-top">
+      <h1 class="logo"><span class="logo-word">KRILLION</span></h1>
+      <p class="tagline">THE DAILY DIVE</p>
+      <p class="subline">7 prompts · 25 seconds each · rarer answers sink deeper</p>
+    </div>
+    <div class="title-bottom">
+      <button class="howto-toggle" id="howto-toggle" aria-expanded="false" aria-controls="howto"><span class="caret">▸</span> HOW TO PLAY</button>
+      <div class="howto" id="howto" hidden>
+        <p>Every prompt has dozens of right answers. Name the <b>rarest</b> one you can. You get a 3-second read, then 25 seconds. Wrong guesses are free, so keep trying until time runs out.</p>
+        <p class="howto-tiers" id="howto-tiers"></p>
+      </div>
+      <button class="btn-begin" id="btn-begin"><span class="tri">▼</span><span id="begin-label">BEGIN DESCENT</span><span class="tri">▼</span></button>
+      <nav class="title-bar">
+        <span class="daily-note" id="daily-note"></span>
+        <button class="tab-btn" data-go="archive">ARCHIVE <svg class="ico"><use href="#i-cal"/></svg></button>
+        <button class="tab-btn" data-go="packs">THEMED PACKS <svg class="ico"><use href="#i-cube"/></svg></button>
+        <button class="tab-btn" data-go="unlimited">UNLIMITED <svg class="ico ico-wide"><use href="#i-inf"/></svg></button>
+      </nav>
+    </div>
+  </section>
+
+  <!-- ============ GAME ============ -->
+  <section class="screen" id="screen-game" aria-label="Dive">
+    <header class="hud">
+      <div class="hud-box" id="hud-depth"><span class="hud-label">DEPTH</span><span class="hud-val"><b id="depth-val">0</b>m</span></div>
+      <div class="pips" id="pips" aria-label="Progress"></div>
+      <div class="hud-box hud-score"><span class="hud-label">SCORE</span><span class="hud-val"><b id="score-val">0</b></span></div>
+    </header>
+
+    <div class="stage">
+      <!-- question / answering -->
+      <div class="panel-q" id="phase-ask">
+        <p class="q-meta" id="q-meta" hidden></p>
+        <div class="q-box">
+          <p class="prompt-no" id="prompt-no">PROMPT 1 OF 7</p>
+          <p id="q-text">…</p>
+        </div>
+        <div class="intro-pill" id="intro-pill">descending · the clock starts in <b id="intro-n">2</b></div>
+        <ul class="tried" id="tried"></ul>
+        <div class="dock">
+        <div class="suggest-box" id="suggest-box" hidden aria-live="polite">
+          <p class="sg-line"><span class="sg-typed" id="sg-typed"></span> <span class="sg-arrow">→</span> <span class="sg-fix" id="sg-fix"></span></p>
+          <p class="sg-sub">submit again to confirm · or edit</p>
+        </div>
+        <div class="under-row">
+          <p class="feedback" id="feedback" aria-live="polite"></p>
+          <button class="link-btn small" id="btn-skip" type="button" title="Skip (Shift+Enter)">SKIP ▸▸</button>
+        </div>
+        <form class="answer-row" id="answer-form" autocomplete="off">
+          <div class="timer" id="timer" aria-live="off">
+            <svg viewBox="0 0 64 64">
+              <circle class="t-disc" cx="32" cy="32" r="30"/>
+              <circle class="t-bg" cx="32" cy="32" r="25"/>
+              <circle class="t-fg" id="timer-ring" cx="32" cy="32" r="25"/>
+              <circle class="t-inner" cx="32" cy="32" r="16"/>
+              <line class="t-hand" id="timer-hand" x1="32" y1="32" x2="32" y2="9"/>
+            </svg>
+            <span id="timer-num">25</span>
+          </div>
+          <div class="input-col">
+            <input id="answer" type="text" maxlength="60" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Your answer" enterkeyhint="go">
+            <div class="time-bar"><div class="time-fill" id="time-fill"></div></div>
+          </div>
+          <button class="btn-divego" id="btn-dive" type="submit">DIVE</button>
+        </form>
+        </div>
+      </div>
+
+      <!-- reveal -->
+      <div class="panel-reveal" id="phase-reveal" hidden>
+        <div class="rev-mid">
+        <span class="icon-halo"><canvas class="tier-icon" id="tier-icon" width="16" height="12"></canvas></span>
+        <p class="tier-name" id="tier-name">PLANKTON</p>
+        <p class="reveal-answer" id="reveal-answer">"Scarf"</p>
+        <p class="reveal-pts" id="reveal-pts">+10 PTS · sink 100m</p>
+        <p class="reveal-blurb" id="reveal-blurb"></p>
+        </div>
+        <button class="btn btn-wide" id="btn-descend">DESCEND</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- sinking answer + drifting depth labels (game only) -->
+  <div class="depth-labels" id="depth-labels" aria-hidden="true"></div>
+  <div class="tier-lines" id="tier-lines" aria-hidden="true"></div>
+  <div class="sink" id="sink" hidden aria-live="polite">
+    <div class="sink-inner">
+      <div class="sink-card"><span id="sink-text"></span><span class="sink-caret">▼</span></div>
+      <span class="sink-tag" id="sink-tag" hidden></span>
+    </div>
+  </div>
+
+  <!-- depth gauge (game only) -->
+  <aside class="gauge" id="gauge" aria-hidden="true">
+    <div class="gauge-line"></div>
+    <div class="ruler" id="ruler"></div>
+    <div class="gauge-you" id="gauge-you">YOU</div>
+  </aside>
+
+  <!-- ============ RESULTS ============ -->
+  <section class="screen" id="screen-results" aria-label="Results">
+    <div class="res-col">
+      <header class="res-top">
+        <span class="mini-logo">KRILLION</span>
+        <span class="res-mode" id="res-mode">DIVE #1 COMPLETE</span>
+      </header>
+      <p class="res-score"><b id="res-score">0</b><span class="res-depth" id="res-depth">-0m</span></p>
+      <p class="res-zone" id="res-zone"></p>
+
+      <h2 class="sec-h">DIVE LOG <span>DEEPER ↓ RARER</span></h2>
+      <svg class="dive-chart" id="dive-chart" viewBox="0 0 480 270" role="img" aria-label="Points per prompt"></svg>
+
+      <h2 class="sec-h">THE BEARING</h2>
+      <ul class="bearing" id="bearing"></ul>
+
+      <div class="res-actions">
+        <button class="btn-copy" id="btn-share">COPY RESULT</button>
+        <button class="btn-share2" id="btn-share2">SHARE<span class="blink">_</span></button>
+      </div>
+
+      <h2 class="sec-h">THE CATCH <span>TAP A ROUND FOR EVERY ANSWER</span></h2>
+      <ol class="catch" id="log-list"></ol>
+
+      <h2 class="sec-h">LOGBOOK</h2>
+      <p class="logbook">STREAK <b id="st-streak">0</b> · PLAYED <b id="st-played">0</b> · AVG <b id="st-avg">0</b> · BEST <b id="st-best">0</b></p>
+      <p class="logbook small">NEXT DAILY DIVE IN <b id="st-next">--:--:--</b></p>
+
+      <nav class="res-nav">
+        <button class="tab-btn" id="btn-again">PLAY AGAIN</button>
+        <button class="tab-btn" id="btn-res-archive">ARCHIVE</button>
+        <button class="tab-btn" id="btn-stats2">STATS</button>
+        <button class="tab-btn" id="btn-res-home">HOME</button>
+      </nav>
+    </div>
+  </section>
+
+  <!-- ============ ARCHIVE ============ -->
+  <section class="screen" id="screen-archive" aria-label="Archive">
+    <div class="sheet">
+      <div class="sheet-head"><h2><svg class="ico"><use href="#i-cal"/></svg> ARCHIVE</h2><button class="icon-btn" data-go="title" aria-label="Back"><svg><use href="#i-close"/></svg></button></div>
+      <p class="sheet-sub">Replay any past Daily Dive. Archive dives don't affect your streak.</p>
+      <div class="cal-nav"><button class="btn btn-ghost small" id="cal-prev">◂</button><span id="cal-title"></span><button class="btn btn-ghost small" id="cal-next">▸</button></div>
+      <div class="cal" id="cal"></div>
+    </div>
+  </section>
+
+  <!-- ============ PACKS ============ -->
+  <section class="screen" id="screen-packs" aria-label="Themed packs">
+    <div class="sheet">
+      <div class="sheet-head"><h2><svg class="ico"><use href="#i-cube"/></svg> THEMED PACKS</h2><button class="icon-btn" data-go="title" aria-label="Back"><svg><use href="#i-close"/></svg></button></div>
+      <p class="sheet-sub">Seven prompts from a single sea. Unlimited replays.</p>
+      <div class="packs" id="packs"></div>
+    </div>
+  </section>
+
+  <!-- ============ MENU DRAWER ============ -->
+  <div class="overlay" id="menu" hidden>
+    <nav class="drawer" aria-label="Menu">
+      <div class="sheet-head"><h2>MENU</h2><button class="icon-btn" data-close aria-label="Close"><svg><use href="#i-close"/></svg></button></div>
+      <button class="menu-item" data-act="home"><svg class="ico"><use href="#i-home"/></svg> HOME</button>
+      <button class="menu-item" data-act="daily"><svg class="ico"><use href="#i-play"/></svg> DAILY DIVE</button>
+      <button class="menu-item" data-act="unlimited"><svg class="ico ico-wide"><use href="#i-inf"/></svg> UNLIMITED</button>
+      <button class="menu-item" data-act="packs"><svg class="ico"><use href="#i-cube"/></svg> THEMED PACKS</button>
+      <button class="menu-item" data-act="archive"><svg class="ico"><use href="#i-cal"/></svg> ARCHIVE</button>
+      <button class="menu-item" data-act="stats"><svg class="ico"><use href="#i-chart"/></svg> STATISTICS</button>
+      <button class="menu-item" data-act="settings"><svg class="ico"><use href="#i-gear"/></svg> SETTINGS</button>
+      <button class="menu-item" data-act="help"><svg class="ico"><use href="#i-help"/></svg> HOW TO PLAY</button>
+      <button class="menu-item danger" data-act="restart" id="menu-restart"><svg class="ico"><use href="#i-restart"/></svg> RESTART DIVE</button>
+      <button class="menu-item danger" data-act="quit" id="menu-quit"><svg class="ico"><use href="#i-close"/></svg> QUIT DIVE</button>
+      <p class="menu-foot" id="menu-foot"></p>
+    </nav>
+  </div>
+
+  <!-- ============ MODALS ============ -->
+  <div class="overlay" id="modal" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div class="sheet-head"><h2 id="modal-title"></h2><button class="icon-btn" data-close aria-label="Close"><svg><use href="#i-close"/></svg></button></div>
+      <div class="modal-body" id="modal-body"></div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <div class="zone-banner" id="zone-banner"></div>
+</div>
+
+<script src="js/db.js?v=20"></script>
+<script src="data/questions.bundle.js?v=20"></script>
+<script src="data/difficulty.js"></script>
+<script src="js/match.js?v=20"></script>
+<script src="js/sound.js?v=20"></script>
+<script src="js/ocean.js?v=20"></script>
+<script src="js/game.js?v=20"></script>
+</body>
+</html>

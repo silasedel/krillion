@@ -26,13 +26,14 @@ for (const q of qs) {
   if (!DIFFS.has(q.diff)) errors.push(`${where} bad diff ${q.diff}`);
   if (!PACKS.has(q.pack)) errors.push(`${where} bad pack ${q.pack}`);
   if (!Array.isArray(q.a) || q.a.length < 6) errors.push(`${where} needs >= 6 answers (has ${q.a && q.a.length})`);
-  const seen = new Map(); const tiers = new Set();
+  const seen = new Map(); const tiers = new Set(); const names = new Set();
   for (const raw of q.a || []) {
     const parts = String(raw).split('|').map(s => s.trim());
     const [name, sc, ...aliases] = parts; const score = Number(sc);
     if (!name) errors.push(`${where} empty answer "${raw}"`);
     if (!SCORES.has(score)) errors.push(`${where} invalid score in "${raw}"`);
     tiers.add(score);
+    const nn = norm((name || '').replace(/^!/, '')); if (names.has(nn)) errors.push(`${where} answer listed twice: "${name}" (run node tools/dedupe.js)`); names.add(nn);
     for (const k of [name, ...aliases]) {
       const n = norm(k || ''); if (!n) { errors.push(`${where} empty alias in "${raw}"`); continue; }
       if (seen.has(n) && seen.get(n) !== name) errors.push(`${where} duplicate answer key "${k}" (${seen.get(n)} vs ${name})`);

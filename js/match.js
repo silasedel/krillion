@@ -62,16 +62,16 @@
       const score = Number(sc) === 15 ? 10 : Number(sc); // 'Too Clever' tier was retired: old 15s are Plankton
       return { i, name, score, aliases: aliases.filter(Boolean), hidden };
     });
-    const index = new Map(); const keys = [];
+    const index = new Map(); const keys = []; const label = new Map(); // label: normalised key -> the name/alias as written
     // exact normalised names/aliases win over derived variants (e.g. "Chao" vs singular of "Chaos")
     for (const ans of list) for (const k of [ans.name, ...ans.aliases]) {
-      const n = norm(k); if (n && !index.has(n)) { index.set(n, ans); keys.push([n, ans]); }
+      const n = norm(k); if (n && !index.has(n)) { index.set(n, ans); label.set(n, k); keys.push([n, ans]); }
     }
     for (const ans of list) for (const k of [ans.name, ...ans.aliases]) {
       const n = norm(k); if (!n) continue;
-      for (const v of variants(n)) { if (!index.has(v)) { index.set(v, ans); keys.push([v, ans]); } }
+      for (const v of variants(n)) { if (!index.has(v)) { index.set(v, ans); label.set(v, k); keys.push([v, ans]); } }
     }
-    q._parsed = { list, index, keys };
+    q._parsed = { list, index, keys, label };
     return q._parsed;
   }
 
@@ -79,7 +79,7 @@
   function match(q, input) {
     const n = norm(input); if (!n) return null;
     const { index, keys } = parseAnswers(q);
-    for (const v of variants(n)) { const a = index.get(v); if (a) return { answer: a, exact: true }; }
+    for (const v of variants(n)) { const a = index.get(v); if (a) return { answer: a, exact: true, label: q._parsed.label.get(v) }; }
     // fuzzy: allow small typos on longer inputs; reject if ambiguous between different answers
     const flat = n.replace(/ /g, '');
     if (flat.length < 5) return null;
@@ -99,7 +99,7 @@
   function matchExact(q, input) {
     const n = norm(input); if (!n) return null;
     const { index } = parseAnswers(q);
-    for (const v of variants(n)) { const a = index.get(v); if (a) return { answer: a, exact: true }; }
+    for (const v of variants(n)) { const a = index.get(v); if (a) return { answer: a, exact: true, label: q._parsed.label.get(v) }; }
     return null;
   }
 
@@ -110,7 +110,7 @@
     const { keys } = parseAnswers(q);
     const flat = n.replace(/ /g, '');
     const maxD = flat.length >= 12 ? 3 : flat.length >= 6 ? 2 : flat.length >= 4 ? 1 : 0;
-    const scored = new Map(); // answer -> [cost, label]
+    const scored = new Map(); // answer -> [cost, key]
     const consider = (ans, cost, label) => { const cur = scored.get(ans); if (!cur || cost < cur[0]) scored.set(ans, [cost, label]); };
     for (const [k, ans] of keys) {
       const kf = k.replace(/ /g, '');
@@ -132,7 +132,7 @@
     if (!scored.size) return null;
     const ranked = [...scored.entries()].sort((a, b) => a[1][0] - b[1][0]);
     if (ranked.length > 1 && ranked[1][1][0] - ranked[0][1][0] < 0.35) return null; // ambiguous
-    return { answer: ranked[0][0] };
+    return { answer: ranked[0][0], label: parseAnswers(q).label.get(ranked[0][1][1]) || ranked[0][0].name };
   }
 
   // An answer phrase that CONTAINS one valid answer counts as that answer ("lemon gatorade" -> Lemon).

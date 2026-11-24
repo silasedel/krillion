@@ -22,3 +22,6 @@ A player typed "bike shock pump" for "something in a garage" and got Plankton. S
 
 
 ## UPDATE: the 'Too Clever' (15) tier is retired. Use only 10, 30, 60, 85, 100. Do not write new 15s.
+
+## Naming reminder
+Canonical names should be what people actually say (e.g. "Qwen", not "Tongyi Qianwen"); put official/long names as aliases. The game now displays whichever name/alias the player matched, so aliases are shown to players too — keep them correctly capitalized.

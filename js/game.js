@@ -189,18 +189,20 @@
     if (!val) { shake(); return; }
     const n = window.Match.norm(val);
     // second Enter on a suggestion accepts it
-    if (pendingSuggest && pendingSuggest.n === n) { const a = pendingSuggest.answer, typed = pendingSuggest.typed; clearSuggest(); return accept(a, typed); }
+    if (pendingSuggest && pendingSuggest.n === n) { const a = pendingSuggest.answer, typed = pendingSuggest.typed, lb = pendingSuggest.label; clearSuggest(); return accept(a, typed, lb !== a.name ? lb : undefined); }
     const m = window.Match.matchExact(curQ(), val);
-    if (m) return accept(m.answer, val);
+    if (m) return accept(m.answer, val, m.label && m.label !== m.answer.name ? m.label : undefined); // show the name they used
     const mc = window.Match.matchContained(curQ(), val);
     if (mc) return accept(mc.answer, val, titleCase(val), window.Match.containedScore(mc.answer.score));
     const sg = window.Match.suggest(curQ(), val);
     if (sg) {
       // fill the correction into the box; submitting again confirms it, editing cancels it
-      pendingSuggest = { n: window.Match.norm(sg.answer.name), answer: sg.answer, typed: val };
-      $('#sg-typed').textContent = `“${val}”`; $('#sg-fix').textContent = `“${sg.answer.name}”`;
+      // show the closest name the player was aiming at ("quen" -> "Qwen"), not necessarily the official one
+      const fix = sg.label || sg.answer.name;
+      pendingSuggest = { n: window.Match.norm(fix), answer: sg.answer, typed: val, label: fix };
+      $('#sg-typed').textContent = `“${val}”`; $('#sg-fix').textContent = `“${fix}”`;
       $('#suggest-box').hidden = false; $('#feedback').textContent = '';
-      inp.value = sg.answer.name; G.input = inp.value; save();
+      inp.value = fix; G.input = inp.value; save();
       inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); Sound.dup();
       return;
     }

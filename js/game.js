@@ -25,7 +25,6 @@
   ];
   const ALL_PACKS = [...PACKS.map(p => p.key), 'general'];
   const FUN_PACKS = ['pop', 'fun'];                              // every dive gets one of each
-  const CORE_PACKS = ALL_PACKS.filter(p => !FUN_PACKS.includes(p) && p !== 'science');
   const DIFF_RANK = { easy: 0, medium: 1, hard: 2 };
 
   // ---------- question pool ----------
@@ -66,60 +65,55 @@
     if (!packOrderCache[p]) packOrderCache[p] = shuffle(QS.filter(q => q.pack === p), rng(strHash('krillion-pack-v1-' + p)));
     return packOrderCache[p];
   }
+  // Dive recipe for Daily & Unlimited: mostly "thinking" prompts, at most one entertainment prompt.
+  const RECIPE = [['science'], ['science'], ['geography'], ['general', 'language'], ['fun'], ['pop', 'movies', 'music'], ['sports', 'gaming', 'general', 'language']];
+  // "Name a character from <show>" style prompts need you to have watched that thing: Themed Packs only
+  const isFandom = q => /\b(character|villain|cast member|episode)\b/i.test(q.q);
+  const casualOK = q => q.diff === 'easy' && !isFandom(q);
+
   function dailyIds(key) {
     const d = Math.max(0, dayIndex(key));
-    const r = rng(strHash('krillion-daily-v1-' + key));
-    // one pop-culture + one fun/random prompt every day, plus five from the rotating core packs
-    // ...plus one science/school-subject prompt every day, and four from the rotating core packs
-    const core = shuffle(CORE_PACKS, rng(strHash('krillion-core-v3-' + Math.floor(d / 7))));
-    const start = (d % 7) * 4;
-    const chosen = shuffle([...FUN_PACKS, 'science', ...Array.from({ length: 4 }, (_, i) => core[(start + i) % core.length])], r);
+    const r = rng(strHash('krillion-daily-v2-' + key));
     const picks = [], used = new Map();
-    chosen.forEach((p, slot) => {
-      const ord = packOrder(p); if (!ord.length) return;
-      const n = used.get(p) || 0; used.set(p, n + 1);
-      const start = (d * 2 + n) % ord.length;
-      for (const want of FALLBACK[MIX[slot]]) {
-        let q = null;
+    for (const opts of RECIPE) {
+      const order = shuffle(opts, r);
+      let got = null;
+      for (const p of order) {
+        const ord = packOrder(p); if (!ord.length) continue;
+        const n = used.get(p) || 0; const start = (d * 3 + n) % ord.length;
         const vagueUsed = picks.some(isVague);
-        for (let k = 0; k < ord.length; k++) { const c = ord[(start + k) % ord.length]; if (c.diff === want && !picks.includes(c) && !(vagueUsed && isVague(c))) { q = c; break; } }
-        if (q) { picks.push(q); return; }
+        for (let k = 0; k < ord.length; k++) {
+          const c = ord[(start + k) % ord.length];
+          if (casualOK(c) && !picks.includes(c) && !(vagueUsed && isVague(c))) { got = c; break; }
+        }
+        if (got) { used.set(p, n + 1); break; }
       }
-    });
-    // top up if a pack is empty
-    let k = 0; while (picks.length < PER_GAME && k < QS.length) { const q = QS[(d * 7 + k++) % QS.length]; if (!picks.includes(q)) picks.push(q); }
-    return picks.slice(0, PER_GAME).sort((a, b) => DIFF_RANK[a.diff] - DIFF_RANK[b.diff]).map(q => q.id);
+      if (got) picks.push(got);
+    }
+    // top up if a pack ran dry
+    let k = 0; while (picks.length < PER_GAME && k < QS.length * 2) { const q = QS[(d * 7 + k++) % QS.length]; if (!picks.includes(q) && (k > QS.length || casualOK(q))) picks.push(q); }
+    return shuffle(picks.slice(0, PER_GAME), r).map(q => q.id);
   }
   function randomIds(pack) {
     const recent = new Set(store.recent);
     let pool = QS.filter(q => !pack || q.pack === pack);
     let fresh = pool.filter(q => !recent.has(q.id));
-    if (fresh.length < PER_GAME) { // everything seen: prefer the least recently played
+    if (fresh.length < PER_GAME * 4) { // most seen: prefer the least recently played
       const pos = new Map(store.recent.map((id, i) => [id, i]));
-      fresh = pool.slice().sort((a, b) => (pos.get(a.id) ?? -1) - (pos.get(b.id) ?? -1)).slice(0, Math.max(PER_GAME * 3, 20));
+      fresh = pool.slice().sort((a, b) => (pos.get(a.id) ?? -1) - (pos.get(b.id) ?? -1)).slice(0, Math.max(PER_GAME * 12, 60));
     }
-    const sh0 = shuffle(fresh); const picks = [];
-    // hold to the difficulty mix: drop questions harder than the dive allows
-    const mix = pack ? PACK_MIX : MIX;
-    const allowHard = !!pack;
-    let vagueSeen = false;
-    const sh = sh0.filter(q => allowHard || q.diff !== 'hard').filter(q => { if (pack || !isVague(q)) return true; if (vagueSeen) return false; vagueSeen = true; return true; });
-    if (!pack) { // variety: two fun/pop prompts, then different packs
-      const used = new Set();
-      for (const fp of [...FUN_PACKS, 'science']) { const q = sh.find(x => x.pack === fp && !picks.includes(x)); if (q) picks.push(q); }
-      const q3 = sh.find(x => FUN_PACKS.includes(x.pack) && !picks.includes(x)); if (q3 && Math.random() < 0.6) picks.push(q3);
-      picks.forEach(q => used.add(q.pack));
-      for (const q of sh) { if (picks.length >= PER_GAME) break; if (!used.has(q.pack)) { used.add(q.pack); picks.push(q); } }
-    }
+    const sh = shuffle(fresh); const picks = [];
     if (pack) {
-      for (const want of mix) { for (const w of FALLBACK[want]) { const q = sh.find(x => x.diff === w && !picks.includes(x)); if (q) { picks.push(q); break; } } }
+      for (const want of PACK_MIX) { for (const w of FALLBACK[want]) { const q = sh.find(x => x.diff === w && !picks.includes(x)); if (q) { picks.push(q); break; } } }
     } else {
-      // Unlimited: easy questions only
-      for (let i = picks.length - 1; i >= 0; i--) if (picks[i].diff !== 'easy') picks.splice(i, 1);
-      for (const q of sh) { if (picks.length >= PER_GAME) break; if (!picks.includes(q) && q.diff === 'easy') picks.push(q); }
+      for (const opts of RECIPE) {
+        const q = sh.find(x => opts.includes(x.pack) && casualOK(x) && !picks.includes(x) && !(isVague(x) && picks.some(isVague)));
+        if (q) picks.push(q);
+      }
+      for (const q of sh) { if (picks.length >= PER_GAME) break; if (!picks.includes(q) && casualOK(q) && !['pop', 'movies', 'music'].includes(q.pack)) picks.push(q); }
     }
-    for (const q of sh0) { if (picks.length >= PER_GAME) break; if (!picks.includes(q)) picks.push(q); }
-    return picks.sort((a, b) => DIFF_RANK[a.diff] - DIFF_RANK[b.diff]).map(q => q.id);
+    for (const q of sh) { if (picks.length >= PER_GAME) break; if (!picks.includes(q)) picks.push(q); }
+    return shuffle(picks).map(q => q.id);
   }
 
   // ---------- persistence ----------

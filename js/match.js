@@ -138,6 +138,7 @@
   // An answer phrase that CONTAINS one valid answer counts as that answer ("lemon gatorade" -> Lemon).
   // Guardrails: the contained answer is >= 4 letters, sits on word boundaries, the extra words are few,
   // and only one distinct answer is contained (so typing several answers at once doesn't work).
+  const NAMING_WORDS = new Set(['state', 'city', 'county', 'island', 'islands', 'river', 'lake', 'mountain', 'mountains', 'street', 'avenue', 'park', 'records', 'studios', 'games', 'entertainment', 'inc', 'corp', 'company', 'co', 'fc', 'united', 'jr', 'sr', 'ii', 'iii', 'iv', 'tech', 'district', 'province', 'territory', 'bay', 'beach', 'airport', 'station', 'stadium', 'arena', 'museum', 'hospital', 'church', 'cathedral', 'bridge', 'tower', 'mall']);
   function matchContained(q, input) {
     // place names are proper nouns: 'New Mexico' must not count as Mexico, so geography never uses phrase matching
     if (q.pack === 'geography') return null;
@@ -152,6 +153,9 @@
       const re = new RegExp('(^| )' + k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '( |$)');
       if (!forms.some(f => re.test(f))) continue;
       const extra = words.length - k.split(' ').length;
+      // "Penn State", "Kansas City", "Georgia Tech": a naming word after the answer makes it a different thing
+      const after = forms[0].split(new RegExp('(?:^| )' + k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?: |$)'))[1] || '';
+      if (after && after.split(' ').some(w => NAMING_WORDS.has(w))) continue;
       if (extra < 1 || extra > 4 || (k.length < 4 && extra > 2)) continue;
       const cur = hits.get(ans); if (!cur || k.length > cur.length) hits.set(ans, k);
     }

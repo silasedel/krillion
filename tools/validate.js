@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Usage: node tools/validate.js [files...]   (defaults to all data/questions/*.js)
 const fs = require('fs'), path = require('path'), vm = require('vm');
-const SCORES = new Set([10, 15, 30, 60, 85, 100]);
+const SCORES = new Set([10, 30, 60, 85, 100]); // the 15 "Too Clever" tier is retired
 const DIFFS = new Set(['easy', 'medium', 'hard']);
 const PACKS = new Set(['geography', 'movies', 'sports', 'gaming', 'science', 'music', 'language', 'general', 'pop', 'fun']);
 const norm = require('../js/match.js').norm; // same normalisation the game uses

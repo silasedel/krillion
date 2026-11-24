@@ -81,10 +81,10 @@
       for (const p of order) {
         const ord = packOrder(p); if (!ord.length) continue;
         const n = used.get(p) || 0; const start = (d * 3 + n) % ord.length;
-        const vagueUsed = picks.some(isVague);
+        const vagueBlocked = d % 3 !== 0 || picks.some(isVague); // "Name something that…" at most once every few days
         for (let k = 0; k < ord.length; k++) {
           const c = ord[(start + k) % ord.length];
-          if (casualOK(c) && !picks.includes(c) && !(vagueUsed && isVague(c))) { got = c; break; }
+          if (casualOK(c) && !picks.includes(c) && !(vagueBlocked && isVague(c))) { got = c; break; }
         }
         if (got) { used.set(p, n + 1); break; }
       }
@@ -106,11 +106,10 @@
     if (pack) {
       for (const want of PACK_MIX) { for (const w of FALLBACK[want]) { const q = sh.find(x => x.diff === w && !picks.includes(x)); if (q) { picks.push(q); break; } } }
     } else {
-      for (const opts of RECIPE) {
-        const q = sh.find(x => opts.includes(x.pack) && casualOK(x) && !picks.includes(x) && !(isVague(x) && picks.some(isVague)));
-        if (q) picks.push(q);
-      }
-      for (const q of sh) { if (picks.length >= PER_GAME) break; if (!picks.includes(q) && casualOK(q) && !['pop', 'movies', 'music'].includes(q.pack)) picks.push(q); }
+      const allowVague = Math.random() < 1 / 3; // "Name something that…" only in about a third of dives
+      const ok = x => casualOK(x) && !picks.includes(x) && !(isVague(x) && (!allowVague || picks.some(isVague)));
+      for (const opts of RECIPE) { const q = sh.find(x => opts.includes(x.pack) && ok(x)); if (q) picks.push(q); }
+      for (const q of sh) { if (picks.length >= PER_GAME) break; if (ok(q) && !['pop', 'movies', 'music'].includes(q.pack)) picks.push(q); }
     }
     for (const q of sh) { if (picks.length >= PER_GAME) break; if (!picks.includes(q)) picks.push(q); }
     return shuffle(picks).map(q => q.id);

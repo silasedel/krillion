@@ -65,34 +65,38 @@
     if (!packOrderCache[p]) packOrderCache[p] = shuffle(QS.filter(q => q.pack === p), rng(strHash('krillion-pack-v1-' + p)));
     return packOrderCache[p];
   }
-  // Dive recipe for Daily & Unlimited: mostly "thinking" prompts, at most one entertainment prompt.
-  const RECIPE = [['science'], ['science'], ['geography'], ['general', 'language'], ['fun'], ['pop', 'movies', 'music'], ['sports', 'gaming', 'general', 'language']];
+  // Daily & Unlimited draw each prompt's topic at random with these weights: thinking topics lead,
+  // entertainment trails, and any dive can come out science-heavy, geography-heavy or mixed.
+  const WEIGHTS = { science: 3, geography: 2.6, general: 2, language: 1.4, fun: 1.3, sports: 0.9, gaming: 0.9, pop: 0.9, music: 0.6, movies: 0.45 };
+  function pickPack(rand, exclude) {
+    const opts = Object.entries(WEIGHTS).filter(([p]) => !exclude.has(p));
+    let x = rand() * opts.reduce((n, [, w]) => n + w, 0);
+    for (const [p, w] of opts) { if ((x -= w) <= 0) return p; }
+    return opts[opts.length - 1][0];
+  }
   // "Name a character from <show>" style prompts need you to have watched that thing: Themed Packs only
   const isFandom = q => /\b(character|villain|cast member|episode)\b/i.test(q.q);
   const casualOK = q => q.diff === 'easy' && !isFandom(q);
+  const ENTERTAINMENT = ['pop', 'movies', 'music'];
 
   function dailyIds(key) {
     const d = Math.max(0, dayIndex(key));
-    const r = rng(strHash('krillion-daily-v2-' + key));
+    const r = rng(strHash('krillion-daily-v3-' + key));
+    const allowVague = d % 3 === 0; // "Name something that…" at most one, on some days only
     const picks = [], used = new Map();
-    for (const opts of RECIPE) {
-      const order = shuffle(opts, r);
-      let got = null;
-      for (const p of order) {
-        const ord = packOrder(p); if (!ord.length) continue;
-        const n = used.get(p) || 0; const start = (d * 3 + n) % ord.length;
-        const vagueBlocked = d % 3 !== 0 || picks.some(isVague); // "Name something that…" at most once every few days
-        for (let k = 0; k < ord.length; k++) {
-          const c = ord[(start + k) % ord.length];
-          if (casualOK(c) && !picks.includes(c) && !(vagueBlocked && isVague(c))) { got = c; break; }
-        }
-        if (got) { used.set(p, n + 1); break; }
+    for (let slot = 0, tries = 0; picks.length < PER_GAME && tries < 60; tries++) {
+      const ent = picks.filter(q => ENTERTAINMENT.includes(q.pack)).length;
+      const p = pickPack(r, new Set(ent >= 2 ? ENTERTAINMENT : []));
+      const ord = packOrder(p); if (!ord.length) continue;
+      const n = used.get(p) || 0; const start = (d * 5 + n * 17) % ord.length;
+      const vagueBlocked = !allowVague || picks.some(isVague);
+      for (let k = 0; k < ord.length; k++) {
+        const c = ord[(start + k) % ord.length];
+        if (casualOK(c) && !picks.includes(c) && !(vagueBlocked && isVague(c))) { picks.push(c); used.set(p, n + 1); break; }
       }
-      if (got) picks.push(got);
     }
-    // top up if a pack ran dry
-    let k = 0; while (picks.length < PER_GAME && k < QS.length * 2) { const q = QS[(d * 7 + k++) % QS.length]; if (!picks.includes(q) && (k > QS.length || casualOK(q))) picks.push(q); }
-    return shuffle(picks.slice(0, PER_GAME), r).map(q => q.id);
+    let k = 0; while (picks.length < PER_GAME && k < QS.length) { const q = QS[(d * 7 + k++) % QS.length]; if (!picks.includes(q) && casualOK(q)) picks.push(q); }
+    return picks.map(q => q.id);
   }
   function randomIds(pack) {
     const recent = new Set(store.recent);
@@ -108,8 +112,12 @@
     } else {
       const allowVague = Math.random() < 1 / 3; // "Name something that…" only in about a third of dives
       const ok = x => casualOK(x) && !picks.includes(x) && !(isVague(x) && (!allowVague || picks.some(isVague)));
-      for (const opts of RECIPE) { const q = sh.find(x => opts.includes(x.pack) && ok(x)); if (q) picks.push(q); }
-      for (const q of sh) { if (picks.length >= PER_GAME) break; if (ok(q) && !['pop', 'movies', 'music'].includes(q.pack)) picks.push(q); }
+      for (let tries = 0; picks.length < PER_GAME && tries < 60; tries++) {
+        const ent = picks.filter(q => ENTERTAINMENT.includes(q.pack)).length;
+        const p = pickPack(Math.random, new Set(ent >= 2 ? ENTERTAINMENT : []));
+        const q = sh.find(x => x.pack === p && ok(x)); if (q) picks.push(q);
+      }
+      for (const q of sh) { if (picks.length >= PER_GAME) break; if (ok(q)) picks.push(q); }
     }
     for (const q of sh) { if (picks.length >= PER_GAME) break; if (!picks.includes(q)) picks.push(q); }
     return shuffle(picks).map(q => q.id);

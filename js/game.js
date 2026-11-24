@@ -39,6 +39,8 @@
   // Daily & Unlimited: easy only. Themed packs: 3 easy, 3 medium, 1 hard.
   const MIX = ['easy', 'easy', 'easy', 'easy', 'easy', 'easy', 'easy']; // Daily & Unlimited: only questions ~90% of players can answer
   const PACK_MIX = ['easy', 'easy', 'easy', 'medium', 'medium', 'medium', 'hard'];
+  // abstract "Name something that…" prompts: fun in small doses, at most one per dive
+  const isVague = q => /^(name|give) (something|anything|a thing|an object|an item)\b/i.test(q.q);
   const FALLBACK = { easy: ['easy', 'medium', 'hard'], medium: ['medium', 'easy', 'hard'], hard: ['hard', 'medium', 'easy'] };
   const BY_ID = new Map(QS.map(q => [q.id, q]));
 
@@ -78,7 +80,8 @@
       const start = (d * 2 + n) % ord.length;
       for (const want of FALLBACK[MIX[slot]]) {
         let q = null;
-        for (let k = 0; k < ord.length; k++) { const c = ord[(start + k) % ord.length]; if (c.diff === want && !picks.includes(c)) { q = c; break; } }
+        const vagueUsed = picks.some(isVague);
+        for (let k = 0; k < ord.length; k++) { const c = ord[(start + k) % ord.length]; if (c.diff === want && !picks.includes(c) && !(vagueUsed && isVague(c))) { q = c; break; } }
         if (q) { picks.push(q); return; }
       }
     });
@@ -98,7 +101,8 @@
     // hold to the difficulty mix: drop questions harder than the dive allows
     const mix = pack ? PACK_MIX : MIX;
     const allowHard = !!pack;
-    const sh = sh0.filter(q => allowHard || q.diff !== 'hard');
+    let vagueSeen = false;
+    const sh = sh0.filter(q => allowHard || q.diff !== 'hard').filter(q => { if (pack || !isVague(q)) return true; if (vagueSeen) return false; vagueSeen = true; return true; });
     if (!pack) { // variety: two fun/pop prompts, then different packs
       const used = new Set();
       for (const fp of FUN_PACKS) { const q = sh.find(x => x.pack === fp && !picks.includes(x)); if (q) picks.push(q); }

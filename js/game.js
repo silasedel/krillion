@@ -25,7 +25,7 @@
   ];
   const ALL_PACKS = [...PACKS.map(p => p.key), 'general'];
   const FUN_PACKS = ['pop', 'fun'];                              // every dive gets one of each
-  const CORE_PACKS = ALL_PACKS.filter(p => !FUN_PACKS.includes(p));
+  const CORE_PACKS = ALL_PACKS.filter(p => !FUN_PACKS.includes(p) && p !== 'science');
   const DIFF_RANK = { easy: 0, medium: 1, hard: 2 };
 
   // ---------- question pool ----------
@@ -70,9 +70,10 @@
     const d = Math.max(0, dayIndex(key));
     const r = rng(strHash('krillion-daily-v1-' + key));
     // one pop-culture + one fun/random prompt every day, plus five from the rotating core packs
-    const core = shuffle(CORE_PACKS, rng(strHash('krillion-core-v2-' + Math.floor(d / 8))));
-    const start = (d % 8) * 5;
-    const chosen = shuffle([...FUN_PACKS, ...Array.from({ length: 5 }, (_, i) => core[(start + i) % core.length])], r);
+    // ...plus one science/school-subject prompt every day, and four from the rotating core packs
+    const core = shuffle(CORE_PACKS, rng(strHash('krillion-core-v3-' + Math.floor(d / 7))));
+    const start = (d % 7) * 4;
+    const chosen = shuffle([...FUN_PACKS, 'science', ...Array.from({ length: 4 }, (_, i) => core[(start + i) % core.length])], r);
     const picks = [], used = new Map();
     chosen.forEach((p, slot) => {
       const ord = packOrder(p); if (!ord.length) return;
@@ -105,7 +106,7 @@
     const sh = sh0.filter(q => allowHard || q.diff !== 'hard').filter(q => { if (pack || !isVague(q)) return true; if (vagueSeen) return false; vagueSeen = true; return true; });
     if (!pack) { // variety: two fun/pop prompts, then different packs
       const used = new Set();
-      for (const fp of FUN_PACKS) { const q = sh.find(x => x.pack === fp && !picks.includes(x)); if (q) picks.push(q); }
+      for (const fp of [...FUN_PACKS, 'science']) { const q = sh.find(x => x.pack === fp && !picks.includes(x)); if (q) picks.push(q); }
       const q3 = sh.find(x => FUN_PACKS.includes(x.pack) && !picks.includes(x)); if (q3 && Math.random() < 0.6) picks.push(q3);
       picks.forEach(q => used.add(q.pack));
       for (const q of sh) { if (picks.length >= PER_GAME) break; if (!used.has(q.pack)) { used.add(q.pack); picks.push(q); } }

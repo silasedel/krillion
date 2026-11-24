@@ -214,7 +214,7 @@
     }
     if (G.tries.some(t => window.Match.norm(t) === n)) { feedback(`Already tried "${val}".`, 'warn'); Sound.dup(); }
     else { G.tries.push(val); feedback(`"${val}" isn't on our list. Try again!`, 'bad'); Sound.wrong(); renderTries(); }
-    shake(); inp.value = ''; G.input = ''; save();
+    shake(); inp.select(); G.input = inp.value; save(); // keep the wrong answer in the box (selected, so typing replaces it)
   }
 
   let pendingSuggest = null;
